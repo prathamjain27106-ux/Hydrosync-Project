@@ -1,0 +1,27 @@
+## SYSTEM ARCHITECTURE RULES FOR HYDROSYNC ENGINE
+
+ENDPOINT_ROUTE: POST /api/voice-report
+INPUT_FORMAT: multipart/form-data containing binary 'file' (audio/m4a)
+
+PIPELINE_EXECUTION_FLOW:
+1. Accept incoming audio report packet. Extract 'file' property from binary multi-part payload.
+2. Construct downstream REST payload pointing to Sarvam AI Endpoint: https://api.sarvam.ai/speech-to-text
+   - Headers: Append "Authorization: Bearer <YOUR_SARVAM_API_KEY>"
+   - Body: Stream the file payload under parameter name "file"
+   - Configuration parameters: Set "model" to "saaras:v3", "language_code" to "hi-IN" (or auto-detect regional dialects).
+3. Receive JSON response from Sarvam AI. Extract the string property path: $.transcript
+
+4. ANALYTICS & MUTATION TRANSLATION (Graph Bridge):
+   - Parse the transcript text for infrastructural entity matches ("Main Street", "Park Road", "Metro Station").
+   - If keyword matches, generate an automated remote Bolt/Cypher webhook execution routing to Neo4j AuraDB:
+     MATCH (l:Location {name: "{{Matched_Entity}}"}) 
+     SET l.status = "FLOODED", l.water_level_cm = 45;
+   - If no key location matches are found, store statement transcript under a general "Unmapped Civic Alert" node bucket.
+
+5. RESPONSE LAYOUT:
+   - Clear processing buffers. Return JSON HTTP 200 payload to caller client:
+     {
+       "status": "PROCESSED",
+       "transcript": "{{transcript}}",
+       "database_updated": true
+     }
