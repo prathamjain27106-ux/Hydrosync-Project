@@ -83,6 +83,9 @@ Instead of a traditional, separate server architecture, HydroSync uses Base44 as
 * **Demo Video Link (Mandatory):** [Watch the 5-Minute HydroSync Demo Video](PASTE_YOUR_VIDEO_URL_HERE)  
 * **Deployment Link (Recommended):** [Access Expo APK Build Portal](https://expo.dev/accounts/parth-coder657/projects/frontend-expo/builds/0f10ffd7-f83c-4dd9-938a-7bc6da99c9c6)  
 * **Pitch Deck / PPT (Optional):** [View HydroSync Presentation Deck](https://gamma.app/docs/Smart-Drainage-Civic-Disaster-Routing-ig01ol81j7jtu1a)
+* [x] All team members completed the mandatory social task   
+- Bonus Task 1 – Badge sharing  
+- Bonus Task 2 – Blog/article: [Read our HydroSync Engineering Write-up](https://dev.to/parthcoder657/building-hydrosync-transforming-voice-telemetry-into-live-smart-city-graphs-at-hackhazards-26-13mm)
 
 ---
 
