@@ -80,9 +80,9 @@ Instead of a traditional, separate server architecture, HydroSync uses Base44 as
 
 ## 📽️ Demo & Deliverables
 
-* **Demo Video Link (Mandatory):** [Insert Your 5-Minute YouTube/Drive Demo Link Here]  
-* **Deployment Link (Recommended):** [Insert Your Public Expo Sandbox / Base44 Webhook Endpoint Here]  
-* **Pitch Deck / PPT (Optional):** [Insert Your Google Slides / Canva Presentation Link Here]  
+* **Demo Video Link (Mandatory):** [Watch the 5-Minute HydroSync Demo Video](PASTE_YOUR_VIDEO_URL_HERE)  
+* **Deployment Link (Recommended):** [Access Expo APK Build Portal](https://expo.dev/accounts/parth-coder657/projects/frontend-expo/builds/0f10ffd7-f83c-4dd9-938a-7bc6da99c9c6)  
+* **Pitch Deck / PPT (Optional):** [View HydroSync Presentation Deck](https://gamma.app/docs/Smart-Drainage-Civic-Disaster-Routing-ig0lo181j7jtula)
 
 ---
 
@@ -97,7 +97,7 @@ Instead of a traditional, separate server architecture, HydroSync uses Base44 as
 ### Environment Configurations:
 Create a `.env` file inside your local root directory:
 ```text
-NEO4J_URI=neo4j+s://xxxxxx.databases.neo4j.io
-NEO4J_PASSWORD=your_secure_auradb_password
+NEO4J_URI=neo4j+s://5926fc97.databases.neo4j.io
+NEO4J_PASSWORD=rxW58aBmrb1c4os8JmdNTLZ4iJnmtSS-pNHxKPzShrE
 BASE44_API_KEY=your_base44_secret_token
 SARVAM_AI_KEY=your_sarvam_credential_string
