@@ -83,4 +83,8 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
 
 // CRITICAL: Render will provide a port via process.env.PORT
 const PORT = process.env.PORT || 3000;
+// Add a "Home" route so the 404 goes away
+app.get('/', (req, res) => {
+    res.send('<h1>HydroSync Backend Engine: ONLINE</h1><p>Status: Ready for voice reports at /api/voice-report</p>');
+});
 module.exports = app;
