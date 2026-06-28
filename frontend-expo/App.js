@@ -125,20 +125,18 @@ export default function App() {
         type: 'audio/m4a',
       });
       telemetryForm.append('theme_target', 'Public Systems, Governance & Civic Tech');
+// --- Production Vercel Serverless Gateway Target ---
+      const VERCEL_PRODUCTION_GATEWAY = 'https://hydrosync-project.vercel.app/api/voice-report';
 
-      // --- Base44 Cloud Route Target Configuration ---
-      // Replace with your active generation URL provided inside the Base44 system panel
-      const BASE44_PRODUCTION_GATEWAY = 'https://api.base44.mock/v1/hydrosync/voice-report';
-
-      const communicationBridge = await fetch(BASE44_PRODUCTION_GATEWAY, {
+      const communicationBridge = await fetch(VERCEL_PRODUCTION_GATEWAY, {
         method: 'POST',
         body: telemetryForm,
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'multipart/form-data',
+          // REMOVED 'Content-Type': 'multipart/form-data'
+          // Allowing the native engine to automatically construct boundary hashes guarantees file parsing success on Vercel.
         },
       });
-
       if (communicationBridge.ok) {
         const structuralResponse = await communicationBridge.json();
         // Server outputs confirmation variables parsed down from downstream Sarvam layers
