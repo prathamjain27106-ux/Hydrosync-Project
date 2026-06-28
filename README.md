@@ -34,7 +34,7 @@ During heavy downpours, city municipal teams treat waterlogging reports as isola
 ### Team Members:  
 * **Pratham Jain** — [GitHub Profile](https://github.com/prathamjain27106-ux)
 * **Parth Rajpal** — [GitHub Profile](https://github.com/Parth-coder657)
-* **Pradumn Mishra** — [GitHub Profile](https://github.com/pradumn-mishra-dev)
+* **Pradumn Mishra** — [GitHub Profile](https://github.com/Pradumn-Mishra360)
 
 ### Your Approach:
 * **Why we chose this problem:** Urban flash flooding is an engineering and logistics failure, not just a weather issue. Traditional relational databases fail at processing real-time topological connections during high-velocity disasters. We chose this problem to prove that graph databases can optimize public safety routing when standard navigation apps fail.
