@@ -83,6 +83,4 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
 
 // CRITICAL: Render will provide a port via process.env.PORT
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`HydroSync Sidecar running on port ${PORT}`);
-});
+module.exports = app;
