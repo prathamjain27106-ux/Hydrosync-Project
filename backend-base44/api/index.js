@@ -13,7 +13,9 @@ const driver = neo4j.driver(
     process.env.NEO4J_URI, 
     neo4j.auth.basic('neo4j', process.env.NEO4J_PASSWORD)
 );
-
+app.get('/api/voice-report', (req, res) => {
+    res.send('<h1>HydroSync Engine: Status Active</h1><p>Send a POST request with an audio file to this endpoint to process a report.</p>');
+});
 app.post('/api/voice-report', upload.single('file'), async (req, res) => {
     console.log("Receive report request...");
     
