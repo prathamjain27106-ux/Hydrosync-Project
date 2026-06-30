@@ -84,7 +84,9 @@ Instead of a traditional, separate server architecture, HydroSync uses Base44 as
 * **Deployment Link (Recommended):** [Access Expo APK Build Portal](https://expo.dev/accounts/parth-coder657/projects/frontend-expo/builds/0f10ffd7-f83c-4dd9-938a-7bc6da99c9c6)  
 * **Pitch Deck / PPT (Optional):** [View HydroSync Presentation Deck](https://gamma.app/docs/Smart-Drainage-Civic-Disaster-Routing-ig01ol81j7jtu1a)
 * [x] All team members completed the mandatory social task   
-- Bonus Task 1 – Badge sharing  
+- Bonus Task 1 – Badge sharing: * **Pratham Jain** — [Link to LinkedIn Post](https://www.linkedin.com/posts/pratham-jain5153ab37b_hackhazards-hydrosync-civictech-share-7475100226089926656-dMG6/?utm_source=share&utm_medium=member_desktop&rcm=ACoAAF3aSyEBOXDzH6Q6wnQZ2HHZ2LTRNJ4T_xY)
+* **Parth Rajpal** — [Link to LinkedIn Post](https://www.linkedin.com/posts/parth-rajpal-_hackhazards2026-namespace-fatalerror-share-7475100639081984000-2us5/?utm_source=share&utm_medium=member_desktop&rcm=ACoAAF3S_vsBdxYl0OCtTwoi6bt9FDrY_5LoClE)
+* **Pradumn Mishra** — [Link to LinkedIn Post](https://www.linkedin.com/posts/pradumn-mishra-84683437b_hackhazards-hackhazards-hydrosync-share-7477415841869950976-2otY/?utm_source=social_share_send&utm_medium=android_app&rcm=ACoAAF3S_vsBdxYl0OCtTwoi6bt9FDrY_5LoClE&utm_campaign=copy_link)
 - Bonus Task 2 – Blog/article: [Read our HydroSync Engineering Write-up](https://dev.to/parthcoder657/building-hydrosync-transforming-voice-telemetry-into-live-smart-city-graphs-at-hackhazards-26-13mm)
 
 ---
