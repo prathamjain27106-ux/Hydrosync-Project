@@ -105,5 +105,5 @@ Create a `.env` file inside your local root directory:
 ```text
 NEO4J_URI=neo4j+s://5926fc97.databases.neo4j.io
 NEO4J_PASSWORD=rxW58aBmrb1c4os8JmdNTLZ4iJnmtSS-pNHxKPzShrE
-BASE44_API_KEY= https://hydro-sync-gate.base44.app/
+BASE44_URL= https://hydro-sync-gate.base44.app/
 SARVAM_AI_KEY= sk_i9rfvukk_xfuztXeAA60YYivo8uX4fEqp
