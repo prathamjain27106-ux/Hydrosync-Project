@@ -139,10 +139,17 @@ export default function App() {
       });
       if (communicationBridge.ok) {
         const structuralResponse = await communicationBridge.json();
-        // Server outputs confirmation variables parsed down from downstream Sarvam layers
-        setStatusMessage(`✅ Logged! Transcript: "${structuralResponse.transcript || 'Processing metadata...'}"`);
+        
+        // 1. Check for the backend success flag explicitly
+        if (structuralResponse.success) {
+          // 2. Map the payload variable into your functional hook hook state
+          setStatusMessage(`✅ Logged! Transcript: "${structuralResponse.transcript}"`);
+        } else {
+          // 3. Fallback safely if the server responds but flags an internal pipeline busy state
+          setStatusMessage("❌ Engine Busy... Sarvam AI processing pool throttled.");
+        }
       } else {
-        // Fallback mockup mode triggers seamlessly for testing if backend routes remain offline
+        // Fallback mockup mode triggers seamlessly if network routing hits a physical barrier
         triggerMockupFallbackIngestion();
       }
     } catch (networkAnomaly) {
@@ -328,7 +335,7 @@ const styles = StyleSheet.create({
   terminalActiveScriptText: {
     color: '#E0E0ED',
     fontSize: 14,
-    fontFamily: 'Platform-Specific-Monospace', 
+    fontFamily: 'monospace', 
     lineHeight: 20,
     fontWeight: '600',
   }
