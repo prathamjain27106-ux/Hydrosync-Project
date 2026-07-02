@@ -59,6 +59,17 @@ export default function App() {
         return;
       }
 
+      // 🟢 CRITICAL DEBOUNCE GUARD: Stop and unload any lingering recording instances before starting a new one
+      if (recordingRef.current) {
+        try {
+          console.log("Collision prevented. Unloading prior audio hardware channel...");
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch (cleanupError) {
+          // Quietly ignore instances that are already closed or unloaded
+        }
+        recordingRef.current = null;
+      }
+
       // Configure regional hardware route flags before opening hardware audio nodes
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
@@ -80,6 +91,7 @@ export default function App() {
     } catch (error) {
       console.error("Failed to cycle recording node state:", error);
       setStatusMessage("Hardware failure: Baseband audio thread busy.");
+      recordingRef.current = null; // Unbind pointer on error to unblock subsequent interactions
     }
   };
 
@@ -103,6 +115,7 @@ export default function App() {
       console.error("Failed to disconnect recording sequence safely:", error);
       setUploading(false);
       setStatusMessage("Processing crash: Local packet generation aborted.");
+      recordingRef.current = null; // Ensure clear pointer memory status on crash
     }
   };
 
@@ -125,7 +138,8 @@ export default function App() {
         type: 'audio/m4a',
       });
       telemetryForm.append('theme_target', 'Public Systems, Governance & Civic Tech');
-// --- Production Vercel Serverless Gateway Target ---
+      
+      // --- Production Vercel Serverless Gateway Target ---
       const VERCEL_PRODUCTION_GATEWAY = 'https://hydrosync-project.vercel.app/api/voice-report';
 
       const communicationBridge = await fetch(VERCEL_PRODUCTION_GATEWAY, {
@@ -137,7 +151,8 @@ export default function App() {
           // Allowing the native engine to automatically construct boundary hashes guarantees file parsing success on Vercel.
         },
       });
-      // INJECT DIAGNOSTIC SNIPPETS HERE
+      
+      // --- LIVE ROUTE NETWORK AUDIT LOGS ---
       console.log("--- LIVE ROUTE NETWORK AUDIT ---");
       console.log("HTTP Response Status Code:", communicationBridge.status);
       console.log("HTTP Response OK Flag:", communicationBridge.ok);
@@ -170,15 +185,6 @@ export default function App() {
     setTimeout(() => {
       setStatusMessage("🎯 Sarvam Node: Local dialect deciphered.\n🎯 Neo4j AuraDB: 'Park Road' node updated to FLOODED.");
     }, 2000);
-  };
-
-  // --- Universal Event Controller Toggle ---
-  const handleInteractionEvent = () => {
-    if (isRecording) {
-      executeStopRecording();
-    } else {
-      executeStartRecording();
-    }
   };
 
   return (
