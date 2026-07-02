@@ -17,24 +17,27 @@ const upload = multer({
 
 // RUNTIME STATE TRACER ARRAY
 let runtimeMemoryBackup = [];
+let driver = null;
 
-// 4. PERSISTENT GLOBAL GRAPH DATABASE CONFIGURATION
-let driver;
-try {
-    console.log("🔍 AUDIT GATE 0: Inspecting Database URI environment variables...");
-    console.log("URI Detected status:", process.env.NEO4J_URI ? "YES" : "MISSING");
-    console.log("User Detected status:", process.env.NEO4J_USER ? "YES" : "MISSING");
-    console.log("Password Detected status:", process.env.NEO4J_PASSWORD ? "YES" : "MISSING");
-
-    if (process.env.NEO4J_URI) {
-        driver = neo4j.driver(
-            process.env.NEO4J_URI,
-            neo4j.auth.basic(process.env.NEO4J_USER || 'neo4j', process.env.NEO4J_PASSWORD)
-        );
-        console.log("✅ AUDIT GATE 0: Neo4j cloud pool driver initialized successfully.");
+// Dynamic Environment Initialization Hook
+function getNeo4jDriverInstance() {
+    if (driver) return driver;
+    
+    if (process.env.NEO4J_URI && process.env.NEO4J_PASSWORD) {
+        try {
+            driver = neo4j.driver(
+                process.env.NEO4J_URI,
+                neo4j.auth.basic(process.env.NEO4J_USER || 'neo4j', process.env.NEO4J_PASSWORD)
+            );
+            console.log("✅ Neo4j Database Link Initialized Successfully.");
+            return driver;
+        } catch (err) {
+            console.error("❌ Neo4j Driver Connection Error:", err.message);
+        }
+    } else {
+        console.warn("⚠️ Warning: Neo4j Environment variables are not visible to this runtime container.");
     }
-} catch (err) {
-    console.error("❌ CRITICAL COMPILATION FAULT: Neo4j Init Failure:", err.message);
+    return null;
 }
 
 // 5. FUNCTIONAL ROUTING INFRASTRUCTURE
@@ -43,73 +46,53 @@ app.get('/', (req, res) => {
     res.send('HydroSync Engine: ONLINE');
 });
 
-// Telemetry Route with Internal Data Inspections
+// Real-Time Status Telemetry Route
 app.get('/api/status', async (req, res) => {
-    console.log("📌 TELEMETRY AUDIT: /api/status endpoint invoked.");
-    console.log(`Current items sitting in warm memory cache list: ${runtimeMemoryBackup.length}`);
-    
     let activeEvents = [...runtimeMemoryBackup];
+    const activeDriver = getNeo4jDriverInstance();
 
-    if (driver) {
-        const session = driver.session();
+    if (activeDriver) {
+        const session = activeDriver.session();
         try {
-            console.log("⚡ TELEMETRY AUDIT: Fetching data rows from Neo4j cluster...");
             const databaseResult = await session.run(
                 `MATCH (n) 
                  WHERE n.status = 'FLOODED' OR toLower(n.status) = 'flooded'
-                 RETURN n.name AS name, n.status AS status, labels(n) AS nodeLabels`
+                 RETURN n.name AS name, n.status AS status`
             );
             
-            console.log(`⚡ TELEMETRY AUDIT: Query completed. Total records found in DB: ${databaseResult.records.length}`);
-            
-            databaseResult.records.forEach((record, idx) => {
-                const locName = record.get('name') || "Missing Name Attribute";
-                const locStatus = record.get('status');
-                const locLabels = record.get('nodeLabels');
-                
-                console.log(`   👉 Record #${idx}: Name="${locName}" | Status="${locStatus}" | Labels=[${locLabels?.join(', ')}]`);
-                
+            databaseResult.records.forEach(record => {
+                const locName = record.get('name') || "Unknown Location";
                 if (!activeEvents.some(e => e.location === locName)) {
                     activeEvents.push({
                         location: locName,
-                        status: locStatus,
+                        status: record.get('status'),
                         timestamp: new Date().toISOString(),
                         source: "Neo4j AuraDB Remote Mesh"
                     });
                 }
             });
         } catch (err) {
-            console.error("❌ TELEMETRY AUDIT EXCEPTION: Neo4j database scan failed:", err.message);
+            console.error("❌ Neo4j Read Blocked:", err.message);
         } finally {
             await session.close();
         }
-    } else {
-        console.warn("⚠️ TELEMETRY AUDIT WARNING: Database driver is completely offline. Skipping graph lookups.");
     }
-    
-    res.json({ system: "HydroSync", status: driver ? "CONNECTED" : "DB_OFFLINE", history: activeEvents });
+    res.json({ system: "HydroSync", status: activeDriver ? "CONNECTED" : "DB_OFFLINE", history: activeEvents });
 });
 
-// Core Multipart Processing Route with Explicit Gate Testing
+// Core Multipart Voice Processing & Topological Mutation Route
 app.post('/api/voice-report', upload.single('file'), async (req, res) => {
-    console.log("\n--- 🔥 NEW INGESTION SEQUENCE INITIATED ---");
+    console.log("--- INCOMING MULTIPART STREAM INTERCEPTED ---");
     
     try {
-        // GATE 1: Multi-part payload interception validation
         if (!req.file) {
-            console.error("❌ AUDIT GATE 1 FAULT: Multipart file block is empty or missing 'file' field key.");
-            return res.status(400).json({ success: false, error: "Missing multipart audio file buffer context." });
+            return res.status(400).json({ success: false, error: "No audio stream chunk received." });
         }
-        console.log(`✅ AUDIT GATE 1: File stream isolated. Name: "${req.file.originalname}" | Size: ${req.file.size} bytes`);
-
-        // GATE 2: Sarvam AI payload delivery tracking
+        
         const form = new FormData();
         form.append('file', req.file.buffer, { filename: 'audio.m4a', contentType: 'audio/x-m4a' });
         form.append('model', 'saaras:v3');
         form.append('mode', 'translate'); 
-
-        console.log("⚡ AUDIT GATE 2: Shipping envelope data array to Sarvam AI Core API...");
-        console.log("Using API Key suffix:", process.env.SARVAM_API_KEY ? `...${process.env.SARVAM_API_KEY.slice(-4)}` : "NOT DECLARED");
 
         const sarvamResponse = await axios.post('https://api.sarvam.ai/speech-to-text', form, {
             headers: { 
@@ -119,31 +102,27 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
             timeout: 9000 
         });
 
-        // GATE 3: Inspecting returning translation metrics
-        console.log("✅ AUDIT GATE 2: Raw network response headers processed from Sarvam AI.");
-        console.log("Raw Response JSON Envelope data:", JSON.stringify(sarvamResponse.data));
-
         const transcript = sarvamResponse.data?.transcript;
         if (!transcript || transcript.trim() === "") {
-            console.warn("⚠️ AUDIT GATE 3 WARNING: Sarvam returned a 200 OK, but text payload evaluates to empty string.");
             return res.status(200).json({ success: true, transcript: "(Silence or unparseable ambient background audio detected)" });
         }
-        console.log(`✅ AUDIT GATE 3: English Translation text extracted successfully: "${transcript}"`);
 
-        // GATE 4: Lexical parsing and keyword evaluation tracing
+        console.log(`Extracted text stream: "${transcript}"`);
         const lowerText = transcript.toLowerCase();
-        let targetLandmark = "Park Road Cross";
         
+        // 🟢 PERFECT SCHEMA ALIGNMENT: Synchronized with your exact Neo4j database node names
+        let targetLandmark = "Park Road Cross";
         if (lowerText.includes("main") || lowerText.includes("street")) {
             targetLandmark = "Main Street Intersect";
-        } else if (lowerText.includes("low") || lowerText.includes("lying")) {
-            targetLandmark = "Low-Lying Zone";
-        } else if (lowerText.includes("metro") || lowerText.includes("station")) {
-            targetLandmark = "Metro Station Curve";
+        } else if (lowerText.includes("low") || lowerText.includes("lying") || lowerText.includes("boulevard")) {
+            targetLandmark = "Low-Lying Boulevard";
+        } else if (lowerText.includes("metro") || lowerText.includes("station") || lowerText.includes("hub")) {
+            targetLandmark = "Metro Station Hub";
+        } else if (lowerText.includes("park") || lowerText.includes("road")) {
+            targetLandmark = "Park Road Cross";
         }
-        console.log(`✅ AUDIT GATE 4: Text patterns successfully resolved to target graph location label: "${targetLandmark}"`);
 
-        // Seed container backup cache array memory fields instantly
+        // Commit to active local instance fallback state cache array instantly
         runtimeMemoryBackup.unshift({
             location: targetLandmark,
             status: "FLOODED",
@@ -151,54 +130,35 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
             source: "Audited Warm-Instance Local Cache Memory Buffer"
         });
 
-        // GATE 5: Graph Database persistence transaction audit
-        if (driver) {
-            const session = driver.session();
+        // Run Relational Mutation Over Live Driver Connection Contexts
+        const activeDriver = getNeo4jDriverInstance();
+        if (activeDriver) {
+            const session = activeDriver.session();
             try {
-                console.log(`⚡ AUDIT GATE 5: Executing idempotent MERGE write for location node: "${targetLandmark}"`);
-                
-                const dbResult = await session.run(
+                console.log(`Executing targeted database property modification for: "${targetLandmark}"`);
+                await session.run(
                     `MERGE (l:Location {name: $targetName})
                      SET l.status = 'FLOODED'
-                     RETURN l.name AS name, l.status AS status, id(l) AS nativeNodeId`,
+                     RETURN l`,
                     { targetName: targetLandmark }
                 );
-                
-                if (dbResult.records.length > 0) {
-                    const savedNodeName = dbResult.records[0].get('name');
-                    const savedNodeStatus = dbResult.records[0].get('status');
-                    const savedNodeId = dbResult.records[0].get('nativeNodeId');
-                    console.log(`🏆 AUDIT GATE 5 SUCCESS: Transaction written to Neo4j. Node ID: ${savedNodeId} | Name: "${savedNodeName}" | Status: "${savedNodeStatus}"`);
-                } else {
-                    console.warn("⚠️ AUDIT GATE 5 WARNING: Neo4j completed query successfully but returned an empty confirmation stream row layout.");
-                }
+                console.log("🏆 Graph database transaction successfully executed.");
             } catch (dbQueryError) {
-                console.error("❌ AUDIT GATE 5 CRITICAL ERROR: Cypher execution failed to write to database instance cluster:", dbQueryError.message);
-                console.error("Full Neo4j Error Object details:", dbQueryError);
+                console.error("❌ Neo4j Write Query Error:", dbQueryError.message);
             } finally {
                 await session.close();
             }
-        } else {
-            console.warn("⚠️ AUDIT GATE 5 BYPASS WARNING: Neo4j database driver is offline. Data persistence skipped.");
         }
 
         return res.json({ 
             success: true, 
             transcript: transcript, 
             matched_node: targetLandmark,
-            audit_log_status: "VERBOSE_INGESTION_COMPLETED_SUCCESSFULLY",
             time: new Date().toISOString() 
         });
 
     } catch (error) {
-        console.error("❌ SYSTEM CORE TRANSACTION CRASH INTERCEPTED:");
-        if (error.response) {
-            console.error(`Upstream Vendor Error Status Code: ${error.response.status}`);
-            console.error("Upstream Vendor Payload data array response:", JSON.stringify(error.response.data));
-        } else {
-            console.error("Native System Error String Message output:", error.message);
-            console.error("Native System Trace stack allocation:", error.stack);
-        }
+        console.error("❌ Fatal Pipeline Handler Exception:", error.message);
         return res.status(500).json({ success: false, error: "Internal serverless execution pipeline fault." });
     }
 });
