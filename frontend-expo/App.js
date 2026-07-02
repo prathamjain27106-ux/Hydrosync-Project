@@ -200,7 +200,10 @@ export default function App() {
             styles.dynamicButtonShell, 
             isRecording ? styles.recordingStateBorder : styles.clearStateBorder
           ]} 
-          onPress={handleInteractionEvent}
+          // Starts hardware recording track the exact instant the screen detects pressure
+          onPressIn={executeStartRecording}
+          // Closes audio tracks and initializes cloud upload when finger leaves the glass
+          onPressOut={executeStopRecording}
           disabled={uploading}
         >
           <View style={[
