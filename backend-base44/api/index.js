@@ -1,3 +1,6 @@
+app.get('/', (req, res) => {
+    res.send('<h1>HydroSync Engine: ONLINE</h1><p>System status: ACTIVE. Waiting for crisis telemetry.</p>');
+});
 const express = require('express');
 const multer = require('multer');
 const axios = require('axios');
