@@ -42,13 +42,15 @@ app.get('/api/status', async (req, res) => {
         const session = driver.session();
         try {
             const databaseResult = await session.run(
-                `MATCH (l:Location {status: 'FLOODED'}) 
+                `MATCH (l:Location) 
+                 WHERE l.status = 'FLOODED' OR toLower(l.status) = 'flooded'
                  RETURN l.name AS name, l.status AS status`
             );
             activeEvents = databaseResult.records.map(record => ({
                 location: record.get('name'),
                 status: record.get('status'),
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                source: "Neo4j AuraDB Cloud Mesh Cluster"
             }));
         } catch (err) {
             console.error("❌ Database Analytics Log Fetch Exception:", err.message);
@@ -68,12 +70,11 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
             return res.status(400).json({ success: false, error: "No file received under form key 'file'" });
         }
         
-        // Formulate multi-part boundary wrapper payload for Sarvam AI
         const form = new FormData();
         form.append('file', req.file.buffer, { filename: 'audio.m4a', contentType: 'audio/x-m4a' });
+        form.append('model', 'saaras:v3');
+        form.append('mode', 'translate'); // Force direct multilingual cross-translation to English
 
-        console.log("Transmitting form envelope to Sarvam AI ASR Infrastructure...");
-        
         const sarvamResponse = await axios.post('https://api.sarvam.ai/speech-to-text', form, {
             headers: { 
                 ...form.getHeaders(), 
@@ -82,47 +83,46 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
             timeout: 9000 
         });
 
-        // --- EXPLICIT STRUCTURAL OBJECT INSPECTION ---
-        const responseData = sarvamResponse.data;
-        const transcript = responseData?.transcript;
+        const transcript = sarvamResponse.data?.transcript;
         
-        // Check Scenario A: Target transcript parameter is completely missing from JSON response
-        if (transcript === undefined || transcript === null) {
+        if (!transcript || transcript.trim() === "") {
             return res.status(200).json({ 
                 success: true, 
-                transcript: `🚨 KEY FAULT: Received raw payload structure: ${JSON.stringify(responseData)}` 
+                transcript: "🎙️ (Audio received, but no speech detected. Please speak clearly!)" 
             });
         }
 
-        // Check Scenario B: Transcript key exists but holds an empty string (Silent/Short Audio File)
-        if (transcript.trim() === "") {
-            return res.status(200).json({ 
-                success: true, 
-                transcript: "🎙️ (Audio received, but no speech detected. Speak clearly and hold the button for 3+ seconds!)" 
-            });
-        }
-
-        // Natural Language Keyword Parsing Matrix
+        // Transcript output is now guaranteed to be English text thanks to mode='translate'
+        console.log(`Extracted text stream from binary track: "${transcript}"`);
+        
         const lowerText = transcript.toLowerCase();
         let matchedLandmark = "Park Road Cross"; 
         
-        if (lowerText.includes("main") || lowerText.includes("street") || lowerText.includes("intersect")) {
+        // Simple English keyword scanning matrix
+        if (lowerText.includes("main") || lowerText.includes("street") || lowerText.includes("intersection")) {
             matchedLandmark = "Main Street Intersect";
         } else if (lowerText.includes("low") || lowerText.includes("lying") || lowerText.includes("zone")) {
             matchedLandmark = "Low-Lying Zone";
-        } else if (lowerText.includes("metro") || lowerText.includes("station")) {
+        } else if (lowerText.includes("metro") || lowerText.includes("station") || lowerText.includes("subway")) {
             matchedLandmark = "Metro Station Curve";
+        } else if (lowerText.includes("park") || lowerText.includes("road")) {
+            matchedLandmark = "Park Road Cross";
         }
 
         // Run Relational Transaction Over Bolt Wire Connection Protocols
         if (driver) {
             const session = driver.session();
             try {
+                console.log(`Executing bulletproof fuzzy mutation rule for: ${matchedLandmark}`);
                 await session.run(
-                    `MATCH (l:Location) WHERE l.name = $targetName OR l.id = $targetName SET l.status = 'FLOODED' RETURN l`,
+                    `MATCH (l:Location) 
+                     WHERE toLower(l.name) CONTAINS toLower($targetName) 
+                        OR toLower($targetName) CONTAINS toLower(l.name)
+                     SET l.status = 'FLOODED' 
+                     RETURN l`,
                     { targetName: matchedLandmark }
                 );
-                console.log(`🏆 Successfully mutated database node state for: ${matchedLandmark}`);
+                console.log("🏆 Graph database state mutation transaction complete.");
             } catch (dbQueryError) {
                 console.error("❌ Neo4j Write Failed:", dbQueryError.message);
             } finally {
@@ -142,11 +142,7 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
         const extractedDetailedMessage = vendorErrorResponse?.error?.message || vendorErrorResponse?.message || error.message;
         
         console.error("❌ Fatal Ingestion Tracker Loop Crash:", extractedDetailedMessage);
-        return res.status(500).json({ 
-            success: false, 
-            error: "Internal serverless execution pipeline fault.",
-            diagnostics: extractedDetailedMessage 
-        });
+        return res.status(500).json({ success: false, error: "Internal serverless execution pipeline fault." });
     }
 });
 
