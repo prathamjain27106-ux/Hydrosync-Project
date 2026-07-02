@@ -137,9 +137,13 @@ export default function App() {
           // Allowing the native engine to automatically construct boundary hashes guarantees file parsing success on Vercel.
         },
       });
+      // INJECT DIAGNOSTIC SNIPPETS HERE
+      console.log("--- LIVE ROUTE NETWORK AUDIT ---");
+      console.log("HTTP Response Status Code:", communicationBridge.status);
+      console.log("HTTP Response OK Flag:", communicationBridge.ok);
+
       if (communicationBridge.ok) {
-        const structuralResponse = await communicationBridge.json();
-        
+        const structuralResponse = await communicationBridge.json();  
         // 1. Check for the backend success flag explicitly
         if (structuralResponse.success) {
           // 2. Map the payload variable into your functional hook hook state
@@ -196,7 +200,10 @@ export default function App() {
             styles.dynamicButtonShell, 
             isRecording ? styles.recordingStateBorder : styles.clearStateBorder
           ]} 
-          onPress={handleInteractionEvent}
+          // Starts hardware recording track the exact instant the screen detects pressure
+          onPressIn={executeStartRecording}
+          // Closes audio tracks and initializes cloud upload when finger leaves the glass
+          onPressOut={executeStopRecording}
           disabled={uploading}
         >
           <View style={[
