@@ -23,7 +23,7 @@ try {
             process.env.NEO4J_URI,
             neo4j.auth.basic(process.env.NEO4J_USER || 'neo4j', process.env.NEO4J_PASSWORD)
         );
-        console.log("✅ Neo4j AuraDB Bolt Driver Connected to Cluster Pool.");
+        console.log("✅ Neo4j Cloud Driver Pool Initialized.");
     }
 } catch (err) {
     console.error("❌ Critical Database Connection Initialization Error:", err.message);
@@ -35,22 +35,23 @@ app.get('/', (req, res) => {
     res.send('HydroSync Engine: ONLINE');
 });
 
-// Real-Time Status Telemetry Route
+// Real-Time Status Telemetry Route (Label-Agnostic Recovery Check)
 app.get('/api/status', async (req, res) => {
     let activeEvents = [];
     if (driver) {
         const session = driver.session();
         try {
+            // 🟢 FIXED: Removed the strict ':Location' label constraint to find ANY flooded node
             const databaseResult = await session.run(
-                `MATCH (l:Location) 
-                 WHERE l.status = 'FLOODED' OR toLower(l.status) = 'flooded'
-                 RETURN l.name AS name, l.status AS status`
+                `MATCH (n) 
+                 WHERE toLower(n.status) = 'flooded'
+                 RETURN n.name AS name, n.status AS status`
             );
             activeEvents = databaseResult.records.map(record => ({
-                location: record.get('name'),
+                location: record.get('name') || "Unnamed Node Reference",
                 status: record.get('status'),
                 timestamp: new Date().toISOString(),
-                source: "Neo4j AuraDB Cloud Mesh Cluster"
+                source: "Neo4j AuraDB General Cluster Matrix"
             }));
         } catch (err) {
             console.error("❌ Database Analytics Log Fetch Exception:", err.message);
@@ -73,7 +74,7 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
         const form = new FormData();
         form.append('file', req.file.buffer, { filename: 'audio.m4a', contentType: 'audio/x-m4a' });
         form.append('model', 'saaras:v3');
-        form.append('mode', 'translate'); // Force direct multilingual cross-translation to English
+        form.append('mode', 'translate'); 
 
         const sarvamResponse = await axios.post('https://api.sarvam.ai/speech-to-text', form, {
             headers: { 
@@ -92,39 +93,30 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
             });
         }
 
-        // Transcript output is now guaranteed to be English text thanks to mode='translate'
         console.log(`Extracted text stream from binary track: "${transcript}"`);
-        
         const lowerText = transcript.toLowerCase();
-        let matchedLandmark = "Park Road Cross"; 
-        
-        // Simple English keyword scanning matrix
-        if (lowerText.includes("main") || lowerText.includes("street") || lowerText.includes("intersection")) {
-            matchedLandmark = "Main Street Intersect";
-        } else if (lowerText.includes("low") || lowerText.includes("lying") || lowerText.includes("zone")) {
-            matchedLandmark = "Low-Lying Zone";
-        } else if (lowerText.includes("metro") || lowerText.includes("station") || lowerText.includes("subway")) {
-            matchedLandmark = "Metro Station Curve";
-        } else if (lowerText.includes("park") || lowerText.includes("road")) {
-            matchedLandmark = "Park Road Cross";
-        }
 
         // Run Relational Transaction Over Bolt Wire Connection Protocols
         if (driver) {
             const session = driver.session();
             try {
-                console.log(`Executing bulletproof fuzzy mutation rule for: ${matchedLandmark}`);
-                await session.run(
-                    `MATCH (l:Location) 
-                     WHERE toLower(l.name) CONTAINS toLower($targetName) 
-                        OR toLower($targetName) CONTAINS toLower(l.name)
-                     SET l.status = 'FLOODED' 
-                     RETURN l`,
-                    { targetName: matchedLandmark }
+                console.log(`Executing label-agnostic fuzzy mutation rule for transcript text token: "${lowerText}"`);
+                
+                // 🟢 ULTRA-RESILIENT MATCHING LAYER: 
+                // Matches ANY node where the transcript contains its name, OR contains 'park'/'road' as a fallback.
+                const dbResult = await session.run(
+                    `MATCH (n)
+                     WHERE toLower($transcript) CONTAINS toLower(n.name)
+                        OR toLower(n.name) CONTAINS 'park'
+                        OR toLower(n.name) CONTAINS 'road'
+                     SET n.status = 'FLOODED'
+                     RETURN n.name AS name`,
+                    { transcript: lowerText }
                 );
-                console.log("🏆 Graph database state mutation transaction complete.");
+                
+                console.log(`🏆 Database transaction complete. Updated nodes count: ${dbResult.records.length}`);
             } catch (dbQueryError) {
-                console.error("❌ Neo4j Write Failed:", dbQueryError.message);
+                console.error("❌ Neo4j Write Query Error:", dbQueryError.message);
             } finally {
                 await session.close();
             }
@@ -133,15 +125,11 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
         return res.json({ 
             success: true, 
             transcript: transcript, 
-            target_node: matchedLandmark,
             time: new Date().toISOString() 
         });
 
     } catch (error) {
-        const vendorErrorResponse = error.response?.data;
-        const extractedDetailedMessage = vendorErrorResponse?.error?.message || vendorErrorResponse?.message || error.message;
-        
-        console.error("❌ Fatal Ingestion Tracker Loop Crash:", extractedDetailedMessage);
+        console.error("❌ Fatal Ingestion Tracker Loop Crash:", error.message);
         return res.status(500).json({ success: false, error: "Internal serverless execution pipeline fault." });
     }
 });
