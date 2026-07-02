@@ -1,3 +1,5 @@
+const cors = require('cors');
+app.use(cors()); // This tells the server: "Allow any app to talk to me."
 const express = require('express');
 const multer = require('multer');
 const axios = require('axios');
