@@ -65,12 +65,11 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
     
     try {
         if (!req.file) {
-            return res.status(200).json({ success: true, transcript: "🚨 ERROR: No file received under form key 'file'" });
+            return res.status(400).json({ success: false, error: "No file received under form key 'file'" });
         }
         
         // Formulate multi-part boundary wrapper payload for Sarvam AI
         const form = new FormData();
-        // Standardized to audio/x-m4a to align with strict MIME-type validation parameters
         form.append('file', req.file.buffer, { filename: 'audio.m4a', contentType: 'audio/x-m4a' });
 
         console.log("Transmitting form envelope to Sarvam AI ASR Infrastructure...");
@@ -83,10 +82,24 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
             timeout: 9000 
         });
 
-        const transcript = sarvamResponse.data?.transcript || sarvamResponse.data?.data?.transcript;
+        // --- EXPLICIT STRUCTURAL OBJECT INSPECTION ---
+        const responseData = sarvamResponse.data;
+        const transcript = responseData?.transcript;
         
-        if (!transcript) {
-            return res.status(200).json({ success: true, transcript: "🚨 ERROR: Sarvam parsed successfully but transcript key was empty." });
+        // Check Scenario A: Target transcript parameter is completely missing from JSON response
+        if (transcript === undefined || transcript === null) {
+            return res.status(200).json({ 
+                success: true, 
+                transcript: `🚨 KEY FAULT: Received raw payload structure: ${JSON.stringify(responseData)}` 
+            });
+        }
+
+        // Check Scenario B: Transcript key exists but holds an empty string (Silent/Short Audio File)
+        if (transcript.trim() === "") {
+            return res.status(200).json({ 
+                success: true, 
+                transcript: "🎙️ (Audio received, but no speech detected. Speak clearly and hold the button for 3+ seconds!)" 
+            });
         }
 
         // Natural Language Keyword Parsing Matrix
@@ -109,6 +122,7 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
                     `MATCH (l:Location) WHERE l.name = $targetName OR l.id = $targetName SET l.status = 'FLOODED' RETURN l`,
                     { targetName: matchedLandmark }
                 );
+                console.log(`🏆 Successfully mutated database node state for: ${matchedLandmark}`);
             } catch (dbQueryError) {
                 console.error("❌ Neo4j Write Failed:", dbQueryError.message);
             } finally {
@@ -124,16 +138,14 @@ app.post('/api/voice-report', upload.single('file'), async (req, res) => {
         });
 
     } catch (error) {
-        // DIAGNOSTIC ABSTRACTION LAYER: Extracts exact error message payload from Sarvam AI response
         const vendorErrorResponse = error.response?.data;
         const extractedDetailedMessage = vendorErrorResponse?.error?.message || vendorErrorResponse?.message || error.message;
         
-        console.error("❌ Internal Ingestion Failure Details:", JSON.stringify(vendorErrorResponse || error.message));
-        
-        // Returns HTTP 200 with the error embedded inside the transcript parameter to force your phone screen to render it!
-        return res.status(200).json({ 
-            success: true, 
-            transcript: `🚨 SARVAM ERROR: ${extractedDetailedMessage}` 
+        console.error("❌ Fatal Ingestion Tracker Loop Crash:", extractedDetailedMessage);
+        return res.status(500).json({ 
+            success: false, 
+            error: "Internal serverless execution pipeline fault.",
+            diagnostics: extractedDetailedMessage 
         });
     }
 });
