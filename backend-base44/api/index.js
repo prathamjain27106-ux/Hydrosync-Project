@@ -1,3 +1,5 @@
+const cors = require('cors');
+app.use(cors()); // This gives the mobile app permission to talk to the server
 const express = require('express');
 const multer = require('multer');
 const axios = require('axios');
