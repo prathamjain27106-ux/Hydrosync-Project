@@ -5,13 +5,15 @@ const neo4j = require('neo4j-driver');
 const FormData = require('form-data');
 
 const app = express();
-const upload = multer();
+// IMPORTANT: Increase memory limit for audio files
+const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } }); 
 
-let reportHistory = []; // In-memory log for Base44
+let reportHistory = [];
 
+// Initialize Neo4j Driver OUTSIDE the handler for efficiency
 const driver = neo4j.driver(
-    process.env.NEO4J_URI, 
-    neo4j.auth.basic('neo4j', process.env.NEO4J_PASSWORD)
+    process.env.NEO4J_URI || '', 
+    neo4j.auth.basic('neo4j', process.env.NEO4J_PASSWORD || '')
 );
 
 app.get('/api/status', (req, res) => {
@@ -19,73 +21,63 @@ app.get('/api/status', (req, res) => {
 });
 
 app.post('/api/voice-report', upload.single('file'), async (req, res) => {
-    console.log("CRITICAL: Received audio packet from Expo...");
+    console.log("Incoming request detected...");
+    const session = driver.session();
     
     try {
-        if (!req.file) throw new Error("No audio file found in request.");
+        // 1. Validate File
+        if (!req.file) throw new Error("Multipart parsing failed: No file found.");
+        console.log("File received, size:", req.file.size);
 
-        // 1. Prepare Sarvam AI Payload
+        // 2. Sarvam AI Handshake
         const form = new FormData();
-        form.append('file', req.file.buffer, { 
-            filename: 'input.m4a', 
-            contentType: 'audio/m4a' 
-        });
+        form.append('file', req.file.buffer, { filename: 'upload.m4a', contentType: 'audio/m4a' });
         form.append('model', 'saaras:v3');
 
-        // 2. Call Sarvam AI with strict timeout
-        const sarvamResponse = await axios.post('https://api.sarvam.ai/speech-to-text', form, {
+        const sarvam = await axios.post('https://api.sarvam.ai/speech-to-text', form, {
             headers: { 
                 ...form.getHeaders(), 
                 'Authorization': `Bearer ${process.env.SARVAM_API_KEY}` 
             },
-            timeout: 15000 // 15 seconds for slow network
+            timeout: 10000 
         });
 
-        // 3. Extract Transcript (Permanent Fix for "Processing metadata")
-        // We ensure we send exactly what Expo needs: 'transcript' string
-        const transcript = sarvamResponse.data.transcript;
-        if (!transcript) throw new Error("Sarvam returned an empty transcript.");
+        const transcript = sarvam.data.transcript;
+        if (!transcript) throw new Error("Sarvam AI returned empty transcript.");
 
-        console.log("Sarvam Transcript:", transcript);
-
-        // 4. Update Neo4j Graph
+        // 3. Graph Logic
         const locations = ["Main Street", "Park Road", "Metro Station"];
         let match = locations.find(loc => transcript.toLowerCase().includes(loc.toLowerCase()));
 
-        const session = driver.session();
-        try {
-            if (match) {
-                await session.run(
-                    "MATCH (l:Location {name: $name}) SET l.status = 'FLOODED', l.water_level_cm = 45",
-                    { name: match }
-                );
-            }
-        } finally {
-            await session.close();
+        if (match) {
+            console.log("Updating Neo4j for location:", match);
+            await session.run("MATCH (l:Location {name: $name}) SET l.status = 'FLOODED'", { name: match });
         }
 
-        // 5. Format JSON exactly for Expo's Telemetry Feed
-        const finalResult = {
+        const result = {
             success: true,
-            transcript: transcript, // This maps to the Expo UI
+            transcript: transcript,
             location: match || "General Alert",
             timestamp: new Date().toLocaleTimeString()
         };
 
-        // Update Base44 History
-        reportHistory.unshift(finalResult);
+        reportHistory.unshift(result);
         if (reportHistory.length > 5) reportHistory.pop();
 
-        res.json(finalResult);
+        res.json(result);
 
     } catch (error) {
-        console.error("PERMANENT ERROR LOG:", error.message);
+        console.error("FATAL BACKEND ERROR:", error.message);
         res.status(500).json({ 
             success: false, 
-            transcript: "Transcription Error: Please try again.", 
+            transcript: "System busy. Please try again.",
             error: error.message 
         });
+    } finally {
+        await session.close(); // ALWAYS close session to prevent 500 errors on next call
     }
 });
 
+// --- CRITICAL VERCEL CONFIGURATION ---
+// This tells Vercel: "Don't touch the data, let Multer handle it!"
 module.exports = app;
